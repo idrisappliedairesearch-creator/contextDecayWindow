@@ -25,3 +25,9 @@ ENV/
 *.pyc
 .tox/
 .mypy_cache/
+*.db
+*.gguf
+models/
+experiments/study_001/runs/
+*.log
+.DS_Store
