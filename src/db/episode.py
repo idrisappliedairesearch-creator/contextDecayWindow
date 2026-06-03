@@ -50,3 +50,11 @@ def get_episode_by_id(conn: sqlite3.Connection, episode_id: str):
         "retrieval_count",
     ]
     return dict(zip(columns, row))
+
+
+def update_episode_topic(conn: sqlite3.Connection, episode_id: str, topic_id: str) -> None:
+    conn.execute(
+        "UPDATE episodes SET topic_id = ? WHERE id = ?",
+        (topic_id, episode_id),
+    )
+    conn.commit()
