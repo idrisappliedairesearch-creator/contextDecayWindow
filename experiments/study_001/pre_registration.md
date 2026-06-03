@@ -4,7 +4,7 @@
 **Organization:** Idris Applied AI Research
 **Status:** Pre-Registered
 **Pre-Registration Date:** 2026-05-31
-**Commit SHA:** 40894c1
+**Commit SHA:** 7b03ba4
 
 ---
 
@@ -311,7 +311,7 @@ experiments/study_001/runs/
 
 ## SHA Record
 
-**Pre-registration commit SHA:** 40894c1
+**Pre-registration commit SHA:** 7b03ba4
 **Committed by:** Muzaffer Ozen
 **Date:** 2026-05-31
 
