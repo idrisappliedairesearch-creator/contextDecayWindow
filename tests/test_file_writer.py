@@ -120,7 +120,7 @@ class TestFileWriterInitRun:
             with open(fpath) as f:
                 reader = csv.reader(f)
                 headers = next(reader)
-                assert headers == ["turn", "topic_count", "episode_count", "new_topic_created", "new_topic_label"]
+                assert headers == ["turn", "topic_count", "episode_count", "new_topic_created", "new_topic_label", "compaction_occurred", "compaction_turn"]
         finally:
             self._teardown()
 
@@ -390,6 +390,8 @@ class TestFileWriterWriteTurn:
             assert row[0] == "1"
             assert row[1] == "2"
             assert row[2] == "5"
+            assert row[5] == "False"
+            assert row[6] == "---"
         finally:
             self._teardown()
 

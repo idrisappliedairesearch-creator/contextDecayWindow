@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 
 @dataclass
@@ -45,6 +45,11 @@ class TurnRecord:
     # Storage (populated after generation)
     stored_episode_id: Optional[str] = None
     stored_topic_label: Optional[str] = None
+
+    # Compaction (populated by CompactionRunner)
+    compaction_occurred: bool = False
+    compaction_turn: Union[int, None] = None
+    history_tokens_before_compaction: Union[int, None] = None
 
     # Computed at flush time
     previous_context_window: Optional[str] = None

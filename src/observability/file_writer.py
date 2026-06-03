@@ -42,7 +42,7 @@ class FileWriter:
     def _create_csv_headers(self, metrics_dir: str) -> None:
         csv_files = {
             "model_performance.csv": ["turn", "tokens_per_second", "time_to_first_token", "output_tokens", "estimated_tokens"],
-            "memory_store.csv": ["turn", "topic_count", "episode_count", "new_topic_created", "new_topic_label"],
+            "memory_store.csv": ["turn", "topic_count", "episode_count", "new_topic_created", "new_topic_label", "compaction_occurred", "compaction_turn"],
             "K_values.csv": ["turn", "k_count", "episode_id", "similarity_score", "topic_label"],
             "N_values.csv": ["turn", "n_count", "episode_id", "decay_score", "topic_label"],
             "topic_events.csv": ["turn", "event_type", "topic_label", "centroid_drift"],
@@ -88,6 +88,9 @@ class FileWriter:
             "new_topic_created": record.new_topic_created,
             "new_topic_label": record.new_topic_label,
             "centroid_drift": record.centroid_drift,
+            "compaction_occurred": record.compaction_occurred,
+            "compaction_turn": record.compaction_turn,
+            "history_tokens_before_compaction": record.history_tokens_before_compaction,
             "tokens_per_second": record.tokens_per_second,
             "time_to_first_token": record.time_to_first_token,
             "output_tokens": record.output_tokens,
@@ -165,6 +168,8 @@ class FileWriter:
             record.episode_count,
             record.new_topic_created,
             self._none_to_dash(record.new_topic_label),
+            record.compaction_occurred,
+            self._none_to_dash(record.compaction_turn),
         ]
         with open(fpath, "a", newline="") as f:
             csv.writer(f).writerow(row)

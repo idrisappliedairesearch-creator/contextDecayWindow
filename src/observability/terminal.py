@@ -39,6 +39,10 @@ class TerminalPrinter:
         n_tok = f"{record.n_token_estimate:,}"
         print(f"[CONTEXT BUILT] ~{record.estimated_tokens:,} tokens | K: ~{k_tok} | N: ~{n_tok}")
 
+        if record.compaction_occurred:
+            replaced = record.history_tokens_before_compaction or 0
+            print(f"[COMPACTION] History compacted at turn {record.compaction_turn} | Replaced ~{replaced:,} tokens -> summary")
+
         gen_line = self._build_gen_line(record)
         print(f"[GENERATION] {gen_line}")
 
