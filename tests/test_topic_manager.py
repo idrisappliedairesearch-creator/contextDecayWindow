@@ -9,6 +9,7 @@ from src.db.schema import init_db
 from src.db.episode import store_episode
 from src.db.topic import get_all_topics
 from src.memory.topic_manager import TopicManager
+from src.observability.turn_record import AssignmentResult
 
 
 def _make_embedding(value: float = 1.0) -> np.ndarray:
@@ -39,10 +40,11 @@ class TestTopicManagerEmptyDb:
             tm = TopicManager(self.conn)
             embedding = _make_embedding(1.0)
             episode_id = store_episode(self.conn, "hello", "hi", embedding, 1)
-            topic_id = tm.assign(episode_id, embedding)
+            result = tm.assign(episode_id, embedding)
+            assert isinstance(result, AssignmentResult)
             assert tm.topic_count == 1
             topics = get_all_topics(self.conn)
-            topic = next(t for t in topics if t["id"] == topic_id)
+            topic = next(t for t in topics if t["id"] == result.topic_id)
             assert topic["label"] == "topic_1"
         finally:
             self._teardown_db()
@@ -80,9 +82,9 @@ class TestTopicManagerAssignment:
             tm.assign(episode_id1, emb1)
             emb2 = np.full(1024, 1.1, dtype=np.float32)
             episode_id2 = store_episode(self.conn, "msg2", "reply2", emb2, 2)
-            topic_id2 = tm.assign(episode_id2, emb2)
+            result2 = tm.assign(episode_id2, emb2)
             assert tm.topic_count == 1
-            topic = tm._topics[topic_id2]
+            topic = tm._topics[result2.topic_id]
             assert topic["label"] == "topic_1"
         finally:
             self._teardown_db()
@@ -110,9 +112,9 @@ class TestTopicManagerAssignment:
             tm.assign(episode_id1, emb1)
             emb2 = np.full(1024, 0.0, dtype=np.float32)
             episode_id2 = store_episode(self.conn, "msg2", "reply2", emb2, 2)
-            topic_id2 = tm.assign(episode_id2, emb2)
+            result2 = tm.assign(episode_id2, emb2)
             topics = get_all_topics(self.conn)
-            topic = next(t for t in topics if t["id"] == topic_id2)
+            topic = next(t for t in topics if t["id"] == result2.topic_id)
             assert topic["label"] == "topic_2"
         finally:
             self._teardown_db()
@@ -145,9 +147,9 @@ class TestCentroidUpdate:
             tm.assign(episode_id1, emb1)
             emb2 = np.full(1024, 4.0, dtype=np.float32)
             episode_id2 = store_episode(self.conn, "msg2", "reply2", emb2, 2)
-            topic_id = tm.assign(episode_id2, emb2)
+            result = tm.assign(episode_id2, emb2)
             expected_centroid = (emb1 * 1 + emb2) / 2
-            topic = tm._topics[topic_id]
+            topic = tm._topics[result.topic_id]
             assert np.allclose(topic["centroid"], expected_centroid)
         finally:
             self._teardown_db()
@@ -160,8 +162,8 @@ class TestCentroidUpdate:
             episode_id1 = store_episode(self.conn, "msg1", "reply1", emb, 1)
             tm.assign(episode_id1, emb)
             episode_id2 = store_episode(self.conn, "msg2", "reply2", emb, 2)
-            topic_id = tm.assign(episode_id2, emb)
-            topic = tm._topics[topic_id]
+            result = tm.assign(episode_id2, emb)
+            topic = tm._topics[result.topic_id]
             assert topic["episode_count"] == 2
         finally:
             self._teardown_db()
@@ -174,10 +176,10 @@ class TestCentroidUpdate:
             episode_id1 = store_episode(self.conn, "msg1", "reply1", emb, 1)
             tm.assign(episode_id1, emb)
             episode_id2 = store_episode(self.conn, "msg2", "reply2", emb, 2)
-            topic_id = tm.assign(episode_id2, emb)
+            result = tm.assign(episode_id2, emb)
             db_topics = get_all_topics(self.conn)
-            db_topic = next(t for t in db_topics if t["id"] == topic_id)
-            mem_topic = tm._topics[topic_id]
+            db_topic = next(t for t in db_topics if t["id"] == result.topic_id)
+            mem_topic = tm._topics[result.topic_id]
             assert db_topic["episode_count"] == mem_topic["episode_count"] == 2
         finally:
             self._teardown_db()
@@ -191,11 +193,11 @@ class TestCentroidUpdate:
             tm.assign(episode_id1, emb1)
             emb2 = np.full(1024, 3.0, dtype=np.float32)
             episode_id2 = store_episode(self.conn, "msg2", "reply2", emb2, 2)
-            topic_id = tm.assign(episode_id2, emb2)
+            result = tm.assign(episode_id2, emb2)
             db_topics = get_all_topics(self.conn)
-            db_topic = next(t for t in db_topics if t["id"] == topic_id)
+            db_topic = next(t for t in db_topics if t["id"] == result.topic_id)
             db_centroid = np.frombuffer(db_topic["centroid"], dtype=np.float32)
-            mem_centroid = tm._topics[topic_id]["centroid"]
+            mem_centroid = tm._topics[result.topic_id]["centroid"]
             assert np.allclose(db_centroid, mem_centroid)
         finally:
             self._teardown_db()
@@ -247,10 +249,83 @@ class TestStartupFromExistingDb:
             tm = TopicManager(self.conn)
             emb = np.full(1024, 1.1, dtype=np.float32)
             episode_id = store_episode(self.conn, "msg", "reply", emb, 10)
-            topic_id = tm.assign(episode_id, emb)
+            result = tm.assign(episode_id, emb)
             assert tm.topic_count == 1
-            topic = tm._topics[topic_id]
+            topic = tm._topics[result.topic_id]
             assert topic["label"] == "topic_1"
             assert topic["episode_count"] == 1
+        finally:
+            self._teardown_db()
+
+
+class TestAssignmentResult:
+    def _setup_db(self):
+        self.db_path = tempfile.mktemp(suffix=".db")
+        self.conn = init_db(self.db_path)
+
+    def _teardown_db(self):
+        self.conn.close()
+        if os.path.isfile(self.db_path):
+            os.unlink(self.db_path)
+
+    def test_returns_assignment_result(self):
+        self._setup_db()
+        try:
+            tm = TopicManager(self.conn)
+            emb = _make_embedding(1.0)
+            episode_id = store_episode(self.conn, "msg", "reply", emb, 1)
+            result = tm.assign(episode_id, emb)
+            assert isinstance(result, AssignmentResult)
+            assert result.topic_id is not None
+            assert result.topic_label == "topic_1"
+            assert result.is_new_topic is True
+            assert result.centroid_drift == 0.0
+        finally:
+            self._teardown_db()
+
+    def test_new_topic_drift_is_zero(self):
+        self._setup_db()
+        try:
+            tm = TopicManager(self.conn)
+            emb = _make_embedding(1.0)
+            episode_id = store_episode(self.conn, "msg", "reply", emb, 1)
+            result = tm.assign(episode_id, emb)
+            assert result.is_new_topic is True
+            assert result.centroid_drift == 0.0
+        finally:
+            self._teardown_db()
+
+    def test_existing_topic_drift_is_positive(self):
+        self._setup_db()
+        try:
+            tm = TopicManager(self.conn)
+            emb1 = np.full(1024, 1.0, dtype=np.float32)
+            episode_id1 = store_episode(self.conn, "msg1", "reply1", emb1, 1)
+            r1 = tm.assign(episode_id1, emb1)
+            assert r1.is_new_topic is True
+            assert r1.centroid_drift == 0.0
+
+            emb2 = np.full(1024, 3.0, dtype=np.float32)
+            episode_id2 = store_episode(self.conn, "msg2", "reply2", emb2, 2)
+            r2 = tm.assign(episode_id2, emb2)
+            assert r2.is_new_topic is False
+            assert r2.centroid_drift > 0.0
+        finally:
+            self._teardown_db()
+
+    def test_similar_embedding_reuses_existing_topic(self):
+        self._setup_db()
+        try:
+            tm = TopicManager(self.conn)
+            emb1 = _make_embedding(1.0)
+            episode_id1 = store_episode(self.conn, "msg1", "reply1", emb1, 1)
+            r1 = tm.assign(episode_id1, emb1)
+
+            emb2 = np.full(1024, 1.1, dtype=np.float32)
+            episode_id2 = store_episode(self.conn, "msg2", "reply2", emb2, 2)
+            r2 = tm.assign(episode_id2, emb2)
+            assert r2.topic_id == r1.topic_id
+            assert r2.topic_label == "topic_1"
+            assert r2.is_new_topic is False
         finally:
             self._teardown_db()

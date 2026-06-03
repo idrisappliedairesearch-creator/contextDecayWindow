@@ -1,5 +1,4 @@
 import sqlite3
-import struct
 from datetime import datetime, timezone
 
 import numpy as np
@@ -7,6 +6,7 @@ import numpy as np
 from src.db.episode import update_episode_topic
 from src.db.topic import store_topic, get_all_topics, update_topic_centroid
 from src.embeddings.provider import cosine_similarity
+from src.observability.turn_record import AssignmentResult
 
 
 class TopicManager:
@@ -30,18 +30,27 @@ class TopicManager:
                 "last_updated_at": row["last_updated_at"],
             }
 
-    def assign(self, episode_id: str, embedding: np.ndarray) -> str:
+    def assign(self, episode_id: str, embedding: np.ndarray) -> AssignmentResult:
         embedding = np.asarray(embedding, dtype=np.float32)
         best_topic_id, best_score = self._find_best_match(embedding)
 
+        is_new = False
         if best_topic_id is not None and best_score >= self.TOPIC_SIMILARITY_THRESHOLD:
             topic_id = best_topic_id
         else:
             topic_id = self._create_topic(embedding)
+            is_new = True
 
-        self._update_centroid(topic_id, embedding)
+        centroid_drift = self._update_centroid(topic_id, embedding, is_new)
         update_episode_topic(self._conn, episode_id, topic_id)
-        return topic_id
+
+        topic = self._topics[topic_id]
+        return AssignmentResult(
+            topic_id=topic_id,
+            topic_label=topic["label"],
+            is_new_topic=is_new,
+            centroid_drift=centroid_drift,
+        )
 
     def _find_best_match(self, embedding: np.ndarray) -> tuple[str | None, float]:
         if not self._topics:
@@ -73,19 +82,25 @@ class TopicManager:
         }
         return topic_id
 
-    def _update_centroid(self, topic_id: str, new_embedding: np.ndarray) -> None:
+    def _update_centroid(self, topic_id: str, new_embedding: np.ndarray, is_new_topic: bool) -> float:
         topic = self._topics[topic_id]
         old_centroid = topic["centroid"]
         old_count = topic["episode_count"]
 
         new_centroid = (old_centroid * old_count + new_embedding) / (old_count + 1)
-        new_count = old_count + 1
 
-        update_topic_centroid(self._conn, topic_id, new_centroid, new_count)
+        if is_new_topic:
+            drift = 0.0
+        else:
+            drift = float(np.linalg.norm(new_centroid - old_centroid))
+
+        update_topic_centroid(self._conn, topic_id, new_centroid, old_count + 1)
 
         topic["centroid"] = new_centroid
-        topic["episode_count"] = new_count
+        topic["episode_count"] = old_count + 1
         topic["last_updated_at"] = datetime.now(timezone.utc).isoformat()
+
+        return drift
 
     @property
     def topic_count(self) -> int:
