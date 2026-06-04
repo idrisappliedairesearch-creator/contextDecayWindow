@@ -1,0 +1,34 @@
+STUDY 001 ANALYSIS SUMMARY
+=======================================================
+
+Full Context:
+  Cat1+2: 5.0/5.0
+  Cat3:   3/3
+  Cat4:   2/2
+  Overall: 10.0/10.0
+
+Compaction:
+  Cat1+2: 2.5/5.0
+  Cat3:   0/3
+  Cat4:   1/2
+  Overall: 3.5/10.0
+
+Iterative:
+  Cat1+2: 5.0/5.0
+  Cat3:   3/3
+  Cat4:   1/2
+  Overall: 9.0/10.0
+
+SUCCESS CRITERIA:
+  Bar 1 (Detail Fidelity):  PASS (delta: 2.50, threshold: 0.75)
+  Bar 2 (Topic Bleed):      PASS
+  Bar 3 (Behavioral):       PASS
+  Overall: VALIDATED
+
+Full Context peak tokens: ~13,231 (turn 32)
+Compaction peak tokens: ~3,098 (turn 4)
+Iterative peak tokens: ~24,854 (turn 32)
+
+Condition C avg K: 1.0
+Condition C topics: 30
+Condition C episodes: 30
