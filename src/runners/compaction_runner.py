@@ -1,6 +1,7 @@
 from src.memory.context_builder import build_prompt, estimate_tokens
 from src.observability.turn_record import TurnRecord
 from src.runners.base_runner import BaseRunner
+from src.inference.provider import InferenceProvider
 
 COMPACTION_THRESHOLD_TOKENS = 3000
 
@@ -19,8 +20,9 @@ class CompactionRunner(BaseRunner):
 
     condition = "compaction"
 
-    def __init__(self, system_prompt: str):
+    def __init__(self, system_prompt: str, inference_provider: InferenceProvider = None):
         self.system_prompt = system_prompt
+        self._inference_provider = inference_provider
         self._history: list[dict] = []
         self._summary: str | None = None
         self._compaction_count: int = 0
@@ -110,4 +112,7 @@ class CompactionRunner(BaseRunner):
         return "\n".join(parts)
 
     def _run_compaction(self, history_text: str) -> str:
-        return "[COMPACTION PENDING — inference not yet wired]"
+        """Real model call — replaces Sprint 006 placeholder."""
+        prompt = COMPACTION_PROMPT_TEMPLATE.format(full_history_text=history_text)
+        result = self._inference_provider.complete(prompt)
+        return result.assistant_message

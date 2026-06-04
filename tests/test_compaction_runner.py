@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.runners.compaction_runner import CompactionRunner, COMPACTION_THRESHOLD_TOKENS, COMPACTION_PROMPT_TEMPLATE
 from src.memory.context_builder import estimate_tokens
+from tests.conftest import MockInferenceProvider
 
 
 class TestCompactionRunnerPreThreshold:
@@ -75,7 +76,7 @@ def _long_message(chars: int) -> str:
 class TestCompactionRunnerFires:
 
     def setup_method(self):
-        self.runner = CompactionRunner("You are a helpful assistant.")
+        self.runner = CompactionRunner("You are a helpful assistant.", inference_provider=MockInferenceProvider())
 
     def _push_over_threshold(self):
         long = _long_message(6000)
@@ -115,11 +116,11 @@ class TestCompactionRunnerFires:
 
         assert self.runner._summary is not None
 
-    def test_summary_is_placeholder(self):
+    def test_summary_is_from_inference(self):
         self._push_over_threshold()
         self.runner.build_context("Next question", 2)
 
-        assert self.runner._summary == "[COMPACTION PENDING — inference not yet wired]"
+        assert self.runner._summary == "Mock assistant response."
 
     def test_compaction_count_increments(self):
         self._push_over_threshold()
@@ -143,7 +144,7 @@ class TestCompactionRunnerFires:
 class TestCompactionRunnerPostCompaction:
 
     def setup_method(self):
-        self.runner = CompactionRunner("You are a helpful assistant.")
+        self.runner = CompactionRunner("You are a helpful assistant.", inference_provider=MockInferenceProvider())
 
     def _fire_compaction(self):
         long = _long_message(6000)
@@ -156,7 +157,7 @@ class TestCompactionRunnerPostCompaction:
 
         prompt, _ = self.runner.build_context("New question", 3)
 
-        assert "[COMPACTION PENDING — inference not yet wired]" in prompt
+        assert "Mock assistant response." in prompt
         assert "--- CONVERSATION SUMMARY (prior history) ---" in prompt
         assert "--- END SUMMARY ---" in prompt
 
@@ -214,7 +215,7 @@ class TestCompactionRunnerConstants:
         assert "Provide the summary now." in COMPACTION_PROMPT_TEMPLATE
 
     def test_prompt_template_not_modified_at_runtime(self):
-        runner = CompactionRunner("System")
+        runner = CompactionRunner("System", inference_provider=MockInferenceProvider())
         original = COMPACTION_PROMPT_TEMPLATE
         long = _long_message(6000)
         runner.on_turn_complete(long, long, 1)
@@ -239,20 +240,21 @@ class TestCompactionRunnerOnTurnComplete:
         assert entry["assistant_message"] == "This."
 
     def test_after_compaction_history_starts_fresh(self):
+        runner = CompactionRunner("You are a helpful assistant.", inference_provider=MockInferenceProvider())
         long = _long_message(6000)
-        self.runner.on_turn_complete(long, long, 1)
-        self.runner.build_context("trigger", 2)
+        runner.on_turn_complete(long, long, 1)
+        runner.build_context("trigger", 2)
 
-        assert len(self.runner._history) == 0
-        self.runner.on_turn_complete("New Q", "New A", 2)
-        assert len(self.runner._history) == 1
-        assert self.runner._history[0]["user_message"] == "New Q"
+        assert len(runner._history) == 0
+        runner.on_turn_complete("New Q", "New A", 2)
+        assert len(runner._history) == 1
+        assert runner._history[0]["user_message"] == "New Q"
 
 
 class TestCompactionRunnerIntegration:
 
     def setup_method(self):
-        self.runner = CompactionRunner("System prompt.")
+        self.runner = CompactionRunner("System prompt.", inference_provider=MockInferenceProvider())
 
     def test_full_turn_sequence(self):
         for i in range(1, 4):
@@ -274,7 +276,7 @@ class TestCompactionRunnerIntegration:
 
         prompt, record = self.runner.build_context("Q6", 6)
         assert record.compaction_occurred is False
-        assert "[COMPACTION PENDING — inference not yet wired]" in prompt
+        assert "Mock assistant response." in prompt
         assert "Q5" in prompt
 
     def test_runner_implements_base_interface(self):

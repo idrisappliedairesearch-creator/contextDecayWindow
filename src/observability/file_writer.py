@@ -29,14 +29,14 @@ class FileWriter:
         os.makedirs(self.config.output_dir, exist_ok=True)
 
         for fname in ["turns.jsonl", "retrieval.jsonl", "context_windows.jsonl", "context_diffs.jsonl"]:
-            open(os.path.join(logs_dir, fname), "w").close()
+            open(os.path.join(logs_dir, fname), "w", encoding="utf-8").close()
 
         self._create_csv_headers(metrics_dir)
 
-        with open(os.path.join(rubric_dir, "responses.md"), "w") as f:
+        with open(os.path.join(rubric_dir, "responses.md"), "w", encoding="utf-8") as f:
             f.write("# Responses\n\n")
 
-        with open(os.path.join(rubric_dir, "scores.md"), "w") as f:
+        with open(os.path.join(rubric_dir, "scores.md"), "w", encoding="utf-8") as f:
             f.write("# Scores\n\n")
 
     def _create_csv_headers(self, metrics_dir: str) -> None:
@@ -51,7 +51,7 @@ class FileWriter:
 
         for fname, headers in csv_files.items():
             fpath = os.path.join(metrics_dir, fname)
-            with open(fpath, "w", newline="") as f:
+            with open(fpath, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow(headers)
 
@@ -99,7 +99,7 @@ class FileWriter:
             "stored_topic_label": record.stored_topic_label,
             "constructed_prompt_path": f"constructed_prompts/turn_{record.turn_number:03d}.txt",
         }
-        with open(fpath, "a") as f:
+        with open(fpath, "a", encoding="utf-8") as f:
             f.write(json.dumps(data) + "\n")
 
     def _write_retrieval_jsonl(self, record: TurnRecord) -> None:
@@ -111,7 +111,7 @@ class FileWriter:
             "k_episodes": record.k_episodes,
             "n_episodes": record.n_episodes,
         }
-        with open(fpath, "a") as f:
+        with open(fpath, "a", encoding="utf-8") as f:
             f.write(json.dumps(data) + "\n")
 
     def _write_context_windows_jsonl(self, record: TurnRecord) -> None:
@@ -121,7 +121,7 @@ class FileWriter:
             "estimated_tokens": record.estimated_tokens,
             "constructed_prompt_path": f"constructed_prompts/turn_{record.turn_number:03d}.txt",
         }
-        with open(fpath, "a") as f:
+        with open(fpath, "a", encoding="utf-8") as f:
             f.write(json.dumps(data) + "\n")
 
     def _write_context_diffs_jsonl(self, record: TurnRecord) -> None:
@@ -129,7 +129,7 @@ class FileWriter:
 
         if record.previous_context_window is None:
             data = {"turn": record.turn_number, "note": "first turn, no diff"}
-            with open(fpath, "a") as f:
+            with open(fpath, "a", encoding="utf-8") as f:
                 f.write(json.dumps(data) + "\n")
             return
 
@@ -145,7 +145,7 @@ class FileWriter:
             "lines_removed": lines_removed,
             "diff": "\n".join(diff),
         }
-        with open(fpath, "a") as f:
+        with open(fpath, "a", encoding="utf-8") as f:
             f.write(json.dumps(data) + "\n")
 
     def _write_model_performance_csv(self, record: TurnRecord) -> None:
@@ -157,7 +157,7 @@ class FileWriter:
             self._none_to_dash(record.output_tokens),
             record.estimated_tokens,
         ]
-        with open(fpath, "a", newline="") as f:
+        with open(fpath, "a", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow(row)
 
     def _write_memory_store_csv(self, record: TurnRecord) -> None:
@@ -171,12 +171,12 @@ class FileWriter:
             record.compaction_occurred,
             self._none_to_dash(record.compaction_turn),
         ]
-        with open(fpath, "a", newline="") as f:
+        with open(fpath, "a", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow(row)
 
     def _write_k_values_csv(self, record: TurnRecord) -> None:
         fpath = os.path.join(self.config.output_dir, "metrics", "K_values.csv")
-        with open(fpath, "a", newline="") as f:
+        with open(fpath, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             for ep in record.k_episodes:
                 writer.writerow([
@@ -189,7 +189,7 @@ class FileWriter:
 
     def _write_n_values_csv(self, record: TurnRecord) -> None:
         fpath = os.path.join(self.config.output_dir, "metrics", "N_values.csv")
-        with open(fpath, "a", newline="") as f:
+        with open(fpath, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             for ep in record.n_episodes:
                 writer.writerow([
@@ -202,7 +202,7 @@ class FileWriter:
 
     def _write_topic_events_csv(self, record: TurnRecord) -> None:
         fpath = os.path.join(self.config.output_dir, "metrics", "topic_events.csv")
-        with open(fpath, "a", newline="") as f:
+        with open(fpath, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             if record.new_topic_created:
                 writer.writerow([
@@ -222,7 +222,7 @@ class FileWriter:
 
     def _write_retrieval_events_csv(self, record: TurnRecord) -> None:
         fpath = os.path.join(self.config.output_dir, "metrics", "retrieval_events.csv")
-        with open(fpath, "a", newline="") as f:
+        with open(fpath, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             for ep in record.k_episodes:
                 writer.writerow([
@@ -252,12 +252,12 @@ class FileWriter:
             ],
             "embedding_dim": 1024,
         }
-        with open(fpath, "w") as f:
+        with open(fpath, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
     def _write_constructed_prompt(self, record: TurnRecord) -> None:
         fpath = os.path.join(self.config.output_dir, "constructed_prompts", f"turn_{record.turn_number:03d}.txt")
-        with open(fpath, "w") as f:
+        with open(fpath, "w", encoding="utf-8") as f:
             f.write(record.constructed_prompt)
 
     @staticmethod
