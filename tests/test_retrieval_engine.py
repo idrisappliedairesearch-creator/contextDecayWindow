@@ -28,7 +28,7 @@ class TestConstants:
         assert DECAY_RATE == 0.1
 
     def test_k_similarity_threshold_defined(self):
-        assert K_SIMILARITY_THRESHOLD == 0.70
+        assert K_SIMILARITY_THRESHOLD == 0.50
 
 
 class TestComputeDecay:
