@@ -46,6 +46,8 @@ class TerminalPrinter:
         topic_line = self._build_topic_line(record)
         print(f"[TOPIC LAYER] {topic_line}")
 
+        self._print_consolidation(record)
+
         k_tok = f"{record.k_token_estimate:,}"
         n_tok = f"{record.n_token_estimate:,}"
         print(f"[CONTEXT BUILT] ~{record.estimated_tokens:,} tokens | K: ~{k_tok} | N: ~{n_tok}")
@@ -70,6 +72,25 @@ class TerminalPrinter:
             print(f"[ASSISTANT] {asst_truncated}")
         print(f"{sep_eq}")
         print()
+
+    def _print_consolidation(self, record: TurnRecord) -> None:
+        if not record.consolidation_occurred:
+            return
+
+        result = record.consolidation_result
+        if result is None:
+            return
+
+        if result.pairs_merged == 0:
+            print(f"[CONSOLIDATION] Episode {result.triggered_at_episode} trigger | No pairs above 0.60 | Topics unchanged: {result.topics_after}")
+        else:
+            print(f"[CONSOLIDATION] Episode {result.triggered_at_episode} trigger | Topics: {result.topics_before} → {result.topics_after} | Merged: {result.pairs_merged} pairs")
+            for entry in result.merge_log:
+                surviving = entry["surviving_label"]
+                merged = entry["merged_label"]
+                sim = entry["similarity"]
+                reassigned = entry["episodes_reassigned"]
+                print(f"  → {merged} + {surviving} (sim: {sim:.2f}) → {surviving} | {reassigned} episodes reassigned")
 
     def _truncate(self, text: str, max_len: int) -> str:
         if len(text) <= max_len:

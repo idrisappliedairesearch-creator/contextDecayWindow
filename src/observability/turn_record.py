@@ -3,11 +3,21 @@ from typing import Optional, Union
 
 
 @dataclass
+class ConsolidationResult:
+    triggered_at_episode: int
+    topics_before: int
+    topics_after: int
+    pairs_merged: int
+    merge_log: list[dict]
+
+
+@dataclass
 class AssignmentResult:
     topic_id: str
     topic_label: str
     is_new_topic: bool
     centroid_drift: float
+    consolidation: Optional[ConsolidationResult] = None
 
 
 @dataclass
@@ -36,6 +46,10 @@ class TurnRecord:
     new_topic_created: bool = False
     new_topic_label: Optional[str] = None
     centroid_drift: dict[str, float] = field(default_factory=dict)
+
+    # Consolidation
+    consolidation_occurred: bool = False
+    consolidation_result: Optional[ConsolidationResult] = None
 
     # Generation (populated by inference runner — Sprint 008)
     tokens_per_second: Optional[float] = None
