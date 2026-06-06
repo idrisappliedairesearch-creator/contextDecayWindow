@@ -3,7 +3,7 @@
 **Organization:** Idris Applied AI Research
 **Status:** Pre-Registered
 **Pre-Registration Date:** 2026-06-06
-**Commit SHA:** 6f91d8d
+**Commit SHA:** 0a87fb1
 **Study 001 SHA:** 7b03ba4
 
 ---
@@ -292,7 +292,7 @@ All Study 001 observability requirements carried forward. Study 002 additions:
 
 ## SHA Record
 
-**Pre-registration commit SHA:** 6f91d8d
+**Pre-registration commit SHA:** 0a87fb1
 **Committed by:** Muzaffer Ozen
 **Date:** 2026-06-06
 
