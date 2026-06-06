@@ -43,8 +43,8 @@ class FileWriter:
         csv_files = {
             "model_performance.csv": ["turn", "tokens_per_second", "time_to_first_token", "output_tokens", "estimated_tokens"],
             "memory_store.csv": ["turn", "topic_count", "episode_count", "new_topic_created", "new_topic_label", "compaction_occurred", "compaction_turn"],
-            "K_values.csv": ["turn", "k_count", "episode_id", "similarity_score", "topic_label"],
-            "N_values.csv": ["turn", "n_count", "episode_id", "decay_score", "topic_label"],
+            "K_values.csv": ["turn", "k_count", "episode_id", "similarity_score", "topic_label", "k_only"],
+            "N_values.csv": ["turn", "n_count", "episode_id", "decay_score", "topic_label", "n_total_in_store"],
             "topic_events.csv": ["turn", "event_type", "topic_label", "centroid_drift"],
             "retrieval_events.csv": ["turn", "episode_id", "similarity_score", "decay_score", "retrieval_type"],
             "rule_detection.csv": ["turn_number", "contains_rule_detected", "rule_summary", "parse_error", "ground_truth", "true_positive", "false_positive"],
@@ -79,6 +79,7 @@ class FileWriter:
             "user_message": record.user_message,
             "k_count": record.k_count,
             "n_count": record.n_count,
+            "n_total_in_store": record.n_total_in_store,
             "total_in_context": record.total_in_context,
             "k_episodes": record.k_episodes,
             "n_episodes": record.n_episodes,
@@ -187,6 +188,7 @@ class FileWriter:
                     ep.get("id", ""),
                     ep.get("sim_score", 0.0),
                     ep.get("topic_label", ""),
+                    ep.get("retrieval_type") == "K",
                 ])
 
     def _write_n_values_csv(self, record: TurnRecord) -> None:
@@ -200,6 +202,7 @@ class FileWriter:
                     ep.get("id", ""),
                     ep.get("decay_score", 0.0),
                     ep.get("topic_label", ""),
+                    record.n_total_in_store,
                 ])
 
     def _write_topic_events_csv(self, record: TurnRecord) -> None:

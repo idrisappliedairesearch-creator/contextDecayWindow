@@ -16,7 +16,17 @@ from src.memory.context_builder import build_prompt, estimate_tokens, _build_rul
 
 
 DECAY_RATE = 0.1
-K_SIMILARITY_THRESHOLD = 0.70
+
+# Study 001: K_SIMILARITY_THRESHOLD = 0.70
+K_SIMILARITY_THRESHOLD = 0.50
+# Reduced from 0.70. Study 001: K fired once in 32 turns.
+# 0.70 was too strict for Qwen3-Embedding-0.6B's embedding space.
+
+N_RETRIEVAL_CAP = 10
+# Hard floor of the soft cap. Top 10 decay-sorted episodes always included.
+# Additional episodes included if they score above K_SIMILARITY_THRESHOLD
+# regardless of whether they appear in the top-10 N set.
+# Rule episodes are unconditional and do not count against this cap.
 
 
 @dataclass
@@ -30,6 +40,7 @@ class RetrievalResult:
     estimated_tokens: int = 0
     k_count: int = 0
     n_count: int = 0
+    n_total_in_store: int = 0
     total_episodes_in_context: int = 0
     rule_episodes: list = field(default_factory=list)
     rule_token_estimate: int = 0
@@ -118,6 +129,7 @@ class RetrievalEngine:
             estimated_tokens=estimated_tokens,
             k_count=len(k_episode_ids),
             n_count=len(n_episode_ids),
+            n_total_in_store=len(deserialized_episodes),
             total_episodes_in_context=len(clean_episodes),
             rule_episodes=rule_episodes,
             rule_token_estimate=rule_token_estimate,
@@ -144,7 +156,8 @@ class RetrievalEngine:
             decay = self._compute_decay(ep.get("last_retrieved_at"))
             n_scores[ep["id"]] = decay
         n_episode_ids = sorted(n_scores.keys(), key=lambda eid: n_scores[eid], reverse=True)
-        return n_episode_ids, n_scores
+        capped_ids = n_episode_ids[:N_RETRIEVAL_CAP]
+        return capped_ids, n_scores
 
     def _compute_decay(self, last_retrieved_at):
         if last_retrieved_at is None:

@@ -26,10 +26,12 @@ class TerminalPrinter:
         print(f"[USER] {user_truncated}")
         print()
 
-        k_above = sum(1 for ep in record.k_episodes if ep.get("sim_score", 0) >= 0.70)
         k_count = record.k_count
         n_count = record.n_count
-        print(f"[RETRIEVAL] K={k_count} above 0.70 | N={n_count} total episodes")
+        n_total = record.n_total_in_store
+        k_only_count = len([ep for ep in record.k_episodes if ep.get("retrieval_type") == "K"])
+        n_cap_label = "(cap)" if n_count >= 10 else ""
+        print(f"[RETRIEVAL] K={k_count} above 0.50 | N={n_count} {n_cap_label} + {k_only_count} K-only | Store: {n_total} episodes")
 
         rule_detected_str = _format_rule_detected(record)
         print(f"[RULE STORE] {record.rule_store_count} rules pinned | Rule detected this turn: {rule_detected_str}")

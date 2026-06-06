@@ -69,8 +69,9 @@ class TestTerminalPrinterFormat:
         record = self._make_record()
         printer.print_turn(record)
         out = capsys.readouterr().out
-        assert "[RETRIEVAL] K=3 above 0.70" in out
-        assert "N=7 total episodes" in out
+        assert "[RETRIEVAL] K=3 above 0.50" in out
+        assert "N=7" in out
+        assert "K-only" in out
 
     def test_prints_episode_details(self, capsys):
         printer = TerminalPrinter()

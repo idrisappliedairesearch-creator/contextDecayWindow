@@ -11,7 +11,10 @@ from src.observability.turn_record import AssignmentResult
 
 class TopicManager:
 
-    TOPIC_SIMILARITY_THRESHOLD = 0.70
+    # Study 001: TOPIC_SIMILARITY_THRESHOLD = 0.70
+    TOPIC_SIMILARITY_THRESHOLD = 0.50
+    # Reduced from 0.70. Study 001: 30 topics created for 30 episodes.
+    # 0.70 produced singleton topic proliferation with no meaningful consolidation.
 
     def __init__(self, conn: sqlite3.Connection):
         self._conn = conn

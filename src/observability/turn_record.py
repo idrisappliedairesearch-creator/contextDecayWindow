@@ -22,6 +22,7 @@ class TurnRecord:
     # Retrieval (populated by RetrievalEngine)
     k_count: int = 0
     n_count: int = 0
+    n_total_in_store: int = 0
     total_in_context: int = 0
     k_episodes: list[dict] = field(default_factory=list)
     n_episodes: list[dict] = field(default_factory=list)
