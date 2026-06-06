@@ -82,6 +82,7 @@ class FileWriter:
             "k_count": record.k_count,
             "n_count": record.n_count,
             "n_total_in_store": record.n_total_in_store,
+            "k_only_count": record.k_only_count,
             "total_in_context": record.total_in_context,
             "k_episodes": record.k_episodes,
             "n_episodes": record.n_episodes,
@@ -103,6 +104,10 @@ class FileWriter:
             "assistant_message": record.assistant_message,
             "stored_episode_id": record.stored_episode_id,
             "stored_topic_label": record.stored_topic_label,
+            "contains_rule": record.contains_rule,
+            "rule_summary": record.rule_summary,
+            "rule_store_count": record.rule_store_count,
+            "rule_token_estimate": record.rule_token_estimate,
             "constructed_prompt_path": f"constructed_prompts/turn_{record.turn_number:03d}.txt",
         }
         if record.consolidation_result is not None:
@@ -297,6 +302,8 @@ class FileWriter:
             "topic_count": record.topic_count,
             "episode_count": record.episode_count,
             "estimated_tokens": record.estimated_tokens,
+            "rule_store_count": record.rule_store_count,
+            "topic_consolidation_count": 1 if record.consolidation_occurred else 0,
             "topics": [
                 {
                     "label": label,

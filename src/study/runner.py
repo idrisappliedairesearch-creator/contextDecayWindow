@@ -1,4 +1,5 @@
 import os
+import time
 
 import numpy as np
 
@@ -63,6 +64,11 @@ class StudyRunner:
         runner = self._create_runner(condition, run_config, observer)
         previous_prompt = None
         rubric_responses = []
+        condition_start = time.perf_counter()
+        peak_tokens = 0
+        turn_count = 0
+
+        self._print_condition_start_banner(condition)
 
         for turn_data in self.turns:
             turn_number = turn_data["turn"]
@@ -85,6 +91,10 @@ class StudyRunner:
             record.time_to_first_token = result.time_to_first_token
             record.output_tokens = result.output_tokens
             record.assistant_message = assistant_message
+
+            if record.estimated_tokens > peak_tokens:
+                peak_tokens = record.estimated_tokens
+            turn_count += 1
 
             if self.RUBRIC_TURN_START <= turn_number <= self.RUBRIC_TURN_END:
                 rubric_responses.append({
@@ -110,6 +120,10 @@ class StudyRunner:
             observer.flush_turn(record)
             previous_prompt = full_prompt
 
+        condition_duration = time.perf_counter() - condition_start
+
+        self._print_condition_complete_banner(condition, turn_count, peak_tokens, condition_duration)
+
         if rubric_responses:
             self._write_rubric_responses(condition, rubric_responses)
 
@@ -126,6 +140,29 @@ class StudyRunner:
             return IterativeRunner(conn, embed, topic_manager, retrieval_engine, observer)
         else:
             raise ValueError(f"Unknown condition: {condition}")
+
+    def _print_condition_start_banner(self, condition: str) -> None:
+        bar_w = 50
+        cond_padded = f"  STARTING CONDITION: {condition}".ljust(bar_w)
+        run_info = f"  Run: {self.run_id} | Script: {len(self.turns)} turns | Study: 002".ljust(bar_w)
+        print()
+        print("\u2554" + "\u2550" * (bar_w - 2) + "\u2557")
+        print("\u2551" + cond_padded + "\u2551")
+        print("\u2551" + run_info + "\u2551")
+        print("\u255a" + "\u2550" * (bar_w - 2) + "\u255d")
+        print()
+
+    def _print_condition_complete_banner(self, condition: str, turn_count: int, peak_tokens: int, duration: float) -> None:
+        bar_w = 50
+        mins, secs = divmod(duration, 60)
+        duration_str = f"{int(mins)}m {int(secs)}s"
+        cond_padded = f"  CONDITION COMPLETE: {condition}".ljust(bar_w)
+        stats = f"  {turn_count} turns | Peak tokens: ~{peak_tokens:,} | Duration: {duration_str}".ljust(bar_w)
+        print("\u2554" + "\u2550" * (bar_w - 2) + "\u2557")
+        print("\u2551" + cond_padded + "\u2551")
+        print("\u2551" + stats + "\u2551")
+        print("\u255a" + "\u2550" * (bar_w - 2) + "\u255d")
+        print()
 
     def _write_rubric_responses(self, condition: str, rubric_responses: list) -> None:
         rubric_dir = os.path.join(self.study_dir, self.run_id, condition, "rubric")
