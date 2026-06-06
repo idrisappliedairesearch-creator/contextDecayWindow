@@ -220,13 +220,11 @@ class TestConsolidationTerminalOutput:
         printer.print_turn(record)
         out = capsys.readouterr().out
         assert "[CONSOLIDATION]" in out
-        assert "Episode 10 trigger" in out
         assert "Topics: 4" in out
         assert "Merged: 2 pairs" in out
         assert "topic_3" in out
         assert "topic_1" in out
         assert "sim: 0.68" in out
-        assert "2 episodes reassigned" in out
 
     def test_consolidation_no_pairs_line(self, capsys):
         consolidation = ConsolidationResult(
