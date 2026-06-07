@@ -8,14 +8,14 @@ if os.path.isfile(dotenv_path):
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 key, _, value = line.partition("=")
-                os.environ.setdefault(key.strip(), value.strip())
+                os.environ[key.strip()] = value.strip()
 
 from src.study.runner import StudyRunner
 
 if __name__ == "__main__":
     runner = StudyRunner(
-        script_path="experiments/study_001/script.json",
-        study_dir="experiments/study_001/runs",
+        script_path="experiments/study_002/script.json",
+        study_dir="experiments/study_002/runs",
         run_id="run_001",
     )
     runner.run()

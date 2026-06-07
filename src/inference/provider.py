@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
-from llama_cpp import Llama
+from llama_cpp import Llama, llama_cpp
 
 
 RULE_DETECTION_INSTRUCTION = """\
@@ -64,6 +64,9 @@ class InferenceProvider:
             n_gpu_layers=n_gpu_layers,
             n_ctx=n_ctx,
             verbose=False,
+            type_k=llama_cpp.GGML_TYPE_Q8_0,
+            type_v=llama_cpp.GGML_TYPE_Q8_0,
+            flash_attn=llama_cpp.LLAMA_FLASH_ATTN_TYPE_ENABLED,
         )
         self._initialized = True
 
