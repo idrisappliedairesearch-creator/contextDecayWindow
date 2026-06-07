@@ -9,19 +9,22 @@ from src.analysis.metrics_reader import (
     read_memory_store,
     read_k_values,
     read_token_growth,
+    read_k_activity,
+    read_consolidation_activity,
+    read_rule_detection,
+    read_token_efficiency,
 )
 from src.analysis.criteria_evaluator import evaluate_criteria
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RUN_DIR = os.path.join(BASE, "experiments", "study_001", "runs", "run_001")
-STUDY_DIR = os.path.join(BASE, "experiments", "study_001")
+RUN_DIR = os.path.join(BASE, "experiments", "study_002", "runs", "run_001")
+STUDY_DIR = os.path.join(BASE, "experiments", "study_002")
 
 CONDITIONS = {
     "full_context": "Full Context",
     "compaction": "Compaction",
     "iterative": "Iterative",
 }
-
 
 WIDTH = 55
 
@@ -39,7 +42,7 @@ def print_section(title):
 
 
 def run_analysis():
-    print_header("STUDY 001 ANALYSIS -- contextDecayWindow")
+    print_header("STUDY 002 ANALYSIS -- contextDecayWindow")
     print("Idris Applied AI Research")
     print("=" * WIDTH)
 
@@ -54,117 +57,188 @@ def run_analysis():
     header = f"{'':22s} {'Full Context':>14s} {'Compaction':>14s} {'Iterative':>14s}"
     print(header)
     print(
-        f"{'Category 1+2 (det)':22s} "
-        f"{scores['full_context']['category_1_2_total']:>10.1f} / 5.0   "
-        f"{scores['compaction']['category_1_2_total']:>10.1f} / 5.0   "
-        f"{scores['iterative']['category_1_2_total']:>10.1f} / 5.0"
+        f"{'Cat 1 (early plant)':22s} "
+        f"{scores['full_context']['cat_1']:>10.1f} / 3.0   "
+        f"{scores['compaction']['cat_1']:>10.1f} / 3.0   "
+        f"{scores['iterative']['cat_1']:>10.1f} / 3.0"
     )
     print(
-        f"{'Category 3 (bleed)':22s} "
-        f"{scores['full_context']['category_3_total']:>9.0f} / 3       "
-        f"{scores['compaction']['category_3_total']:>9.0f} / 3       "
-        f"{scores['iterative']['category_3_total']:>9.0f} / 3"
+        f"{'Cat 2 (middle plant) *':22s} "
+        f"{scores['full_context']['cat_2']:>10.1f} / 3.0   "
+        f"{scores['compaction']['cat_2']:>10.1f} / 3.0   "
+        f"{scores['iterative']['cat_2']:>10.1f} / 3.0"
     )
     print(
-        f"{'Category 4 (behav)':22s} "
-        f"{scores['full_context']['category_4_total']:>9.0f} / 2       "
-        f"{scores['compaction']['category_4_total']:>9.0f} / 2       "
-        f"{scores['iterative']['category_4_total']:>9.0f} / 2"
+        f"{'Cat 3 (late plant)':22s} "
+        f"{scores['full_context']['cat_3']:>10.1f} / 2.0   "
+        f"{scores['compaction']['cat_3']:>10.1f} / 2.0   "
+        f"{scores['iterative']['cat_3']:>10.1f} / 2.0"
+    )
+    print(
+        f"{'Cat 4 (bleed)':22s} "
+        f"{scores['full_context']['cat_4']:>9.0f} / 3       "
+        f"{scores['compaction']['cat_4']:>9.0f} / 3       "
+        f"{scores['iterative']['cat_4']:>9.0f} / 3"
+    )
+    print(
+        f"{'Cat 5 (rules)':22s} "
+        f"{scores['full_context']['cat_5']:>9.0f} / 2       "
+        f"{scores['compaction']['cat_5']:>9.0f} / 2       "
+        f"{scores['iterative']['cat_5']:>9.0f} / 2"
     )
     print(
         f"{'Overall':22s} "
-        f"{scores['full_context']['overall']:>9.1f} / 10.0  "
-        f"{scores['compaction']['overall']:>9.1f} / 10.0  "
-        f"{scores['iterative']['overall']:>9.1f} / 10.0"
+        f"{scores['full_context']['overall']:>9.1f} / 13.0  "
+        f"{scores['compaction']['overall']:>9.1f} / 13.0  "
+        f"{scores['iterative']['overall']:>9.1f} / 13.0"
     )
+    print()
+    print("* Primary test of Study 002")
+
+    # Token efficiency
+    iter_dir = os.path.join(RUN_DIR, "iterative")
+    fc_dir = os.path.join(RUN_DIR, "full_context")
+    token_eff = read_token_efficiency(iter_dir, fc_dir)
 
     # Evaluate criteria
-    criteria = evaluate_criteria(scores)
+    metrics = {"token_efficiency": token_eff}
+    criteria = evaluate_criteria(scores, metrics)
 
     print_section("SUCCESS CRITERIA")
 
     b1 = criteria["bar_1"]
-    print(f"Bar 1 -- Detail Fidelity (Cat1+2, C vs B, >=15pp):  {'PASS' if b1['passed'] else 'FAIL'}")
+    print(f"Bar 1 -- Middle Plant (Cat2, C >= A):          {'PASS' if b1['passed'] else 'FAIL'}")
     print(
         f"  Condition C: {b1['condition_c_score']:.1f}  |  "
-        f"Condition B: {b1['condition_b_score']:.1f}  |  "
-        f"delta: {b1['difference']:.2f}pp (threshold: {b1['threshold']:.2f})"
+        f"Condition A: {b1['condition_a_score']:.1f}"
     )
     print()
 
     b2 = criteria["bar_2"]
-    print(f"Bar 2 -- Topic Bleed (Cat3, C <= A):                {'PASS' if b2['passed'] else 'FAIL'}")
-    print(f"  Condition C: {b2['condition_c_bleed']:.0f}/3  |  Condition A: {b2['condition_a_bleed']:.0f}/3")
+    print(f"Bar 2 -- Token Efficiency (C < A every turn):  {'PASS' if b2['passed'] else 'FAIL'}")
+    print(
+        f"  Iterative peak: ~{b2['iterative_peak']:,}  |  "
+        f"Full context peak: ~{b2['full_context_peak']:,}"
+    )
+    print(f"  Violations: {b2['violations']} turns")
     print()
 
     b3 = criteria["bar_3"]
-    print(f"Bar 3 -- Behavioral Consistency (Cat4, C >= B):     {'PASS' if b3['passed'] else 'FAIL'}")
-    print(f"  Condition C: {b3['condition_c_score']:.0f}/2  |  Condition B: {b3['condition_b_score']:.0f}/2")
+    print(f"Bar 3 -- Rule Pinning (Cat5, C > Study001):    {'PASS' if b3['passed'] else 'FAIL'}")
+    print(
+        f"  Condition C: {b3['condition_c_score']:.0f}/2  |  "
+        f"Study 001 baseline: {b3['study001_baseline']}/2"
+    )
+    print()
+
+    b4 = criteria["bar_4"]
+    print(f"Bar 4 -- Topic Bleed (Cat4, C >= A):           {'PASS' if b4['passed'] else 'FAIL'}")
+    print(
+        f"  Condition C: {b4['condition_c_score']:.0f}/3  |  "
+        f"Condition A: {b4['condition_a_score']:.0f}/3"
+    )
     print()
 
     print(f"OVERALL RESULT: {criteria['overall']}")
 
-    # Token growth
-    print_section("TOKEN GROWTH")
+    # K Retrieval Activity
+    print_section("K RETRIEVAL ACTIVITY (Condition C)")
+    kact = read_k_activity(iter_dir)
+    print(f"Total turns with K > 0:   {120 - kact['k_zero_turns']} / 120")
+    print(f"Total K events:           {kact['k_events_total']}")
+    print(f"K-only episodes total:    {kact['k_only_episodes_total']}")
+    print(f"First K fire turn:        Turn {kact['first_k_fire_turn']}")
+    print(f"K-zero turns:             {kact['k_zero_turns']}")
+    print("(Study 001 comparison: K fired 1 time in 32 turns)")
 
+    # Topic Consolidation
+    print_section("TOPIC CONSOLIDATION (Condition C)")
+    cons = read_consolidation_activity(iter_dir)
+    print(f"Consolidation passes:     {cons['consolidation_passes']}")
+    print(f"Total pairs merged:       {cons['total_pairs_merged']}")
+    print(f"Topic count turn 10:      {cons['topics_at_turn_10']}")
+    print(f"Topic count turn 60:      {cons['topics_at_turn_60']}")
+    print(f"Topic count turn 120:     {cons['topics_at_turn_120']}")
+    print(f"Final topic count:        {cons['final_topic_count']}")
+    print(f"(Study 001 comparison: 30 topics / 30 episodes at end)")
+
+    # Rule Detection
+    print_section("RULE DETECTION")
+    for cond_key, cond_label in CONDITIONS.items():
+        rd = read_rule_detection(os.path.join(RUN_DIR, cond_key))
+        print(f"{cond_label}: detections={rd['total_detections']}, "
+              f"recall={rd['recall']:.2f}, "
+              f"est. FP={rd['estimated_false_positives']}")
+    print(f"Ground truth turns:       {rd['ground_truth_turns']}")
+
+    # Token Growth
+    print_section("TOKEN GROWTH")
+    comp_dir = os.path.join(RUN_DIR, "compaction")
     for cond_key, cond_label in CONDITIONS.items():
         mp = read_model_performance(os.path.join(RUN_DIR, cond_key))
-        ms = read_memory_store(os.path.join(RUN_DIR, cond_key))
-        compaction_info = ""
-        if ms["compaction_events"]:
-            compaction_info = f" ({len(ms['compaction_events'])} compaction events)"
         print(
-            f"{cond_label.capitalize()} peak:     ~{mp['peak_estimated_tokens']:,} tokens (turn {mp['peak_turn']}{compaction_info})"
+            f"{cond_label.capitalize()} peak:     ~{mp['peak_estimated_tokens']:,} tokens (turn {mp['peak_turn']})"
         )
-
-    # Condition C retrieval summary
-    print_section("CONDITION C -- RETRIEVAL SUMMARY")
-
-    kvals = read_k_values(os.path.join(RUN_DIR, "iterative"))
-    memstore = read_memory_store(os.path.join(RUN_DIR, "iterative"))
-    print(f"Avg K per turn:      {kvals['avg_k_per_turn']} episodes")
-    print(f"Max K per turn:      {kvals['max_k_per_turn']} episodes")
-    print(f"Total retrieval events: {kvals['total_retrieval_events']}")
-    print(f"Final topic count:   {memstore['final_topic_count']}")
-    print(f"Final episode count: {memstore['final_episode_count']}")
+    print(f"Cap saturation turn:      Turn {token_eff['cap_saturation_turn']} (N cap hit, K compensating)")
 
     # Write summary
     summary_lines = []
-    summary_lines.append("STUDY 001 ANALYSIS SUMMARY")
+    summary_lines.append("STUDY 002 ANALYSIS SUMMARY")
     summary_lines.append("=" * WIDTH)
     summary_lines.append("")
 
     for cond_key, cond_label in CONDITIONS.items():
         s = scores[cond_key]
         summary_lines.append(f"{cond_label}:")
-        summary_lines.append(f"  Cat1+2: {s['category_1_2_total']:.1f}/5.0")
-        summary_lines.append(f"  Cat3:   {s['category_3_total']:.0f}/3")
-        summary_lines.append(f"  Cat4:   {s['category_4_total']:.0f}/2")
-        summary_lines.append(f"  Overall: {s['overall']:.1f}/10.0")
+        summary_lines.append(f"  Cat 1 (early plant):  {s['cat_1']:.1f}/3.0")
+        summary_lines.append(f"  Cat 2 (middle plant): {s['cat_2']:.1f}/3.0")
+        summary_lines.append(f"  Cat 3 (late plant):   {s['cat_3']:.1f}/2.0")
+        summary_lines.append(f"  Cat 4 (bleed):        {s['cat_4']:.0f}/3")
+        summary_lines.append(f"  Cat 5 (rules):        {s['cat_5']:.0f}/2")
+        summary_lines.append(f"  Overall:              {s['overall']:.1f}/13.0")
         summary_lines.append("")
 
     summary_lines.append("SUCCESS CRITERIA:")
-    summary_lines.append(f"  Bar 1 (Detail Fidelity):  {'PASS' if b1['passed'] else 'FAIL'} (delta: {b1['difference']:.2f}, threshold: {b1['threshold']:.2f})")
-    summary_lines.append(f"  Bar 2 (Topic Bleed):      {'PASS' if b2['passed'] else 'FAIL'}")
-    summary_lines.append(f"  Bar 3 (Behavioral):       {'PASS' if b3['passed'] else 'FAIL'}")
+    summary_lines.append(f"  Bar 1 (Middle Plant):     {'PASS' if b1['passed'] else 'FAIL'} (C: {b1['condition_c_score']:.1f}, A: {b1['condition_a_score']:.1f})")
+    summary_lines.append(f"  Bar 2 (Token Efficiency): {'PASS' if b2['passed'] else 'FAIL'} (violations: {b2['violations']})")
+    summary_lines.append(f"  Bar 3 (Rule Pinning):     {'PASS' if b3['passed'] else 'FAIL'} (C: {b3['condition_c_score']:.0f}/2, baseline: {b3['study001_baseline']}/2)")
+    summary_lines.append(f"  Bar 4 (Topic Bleed):      {'PASS' if b4['passed'] else 'FAIL'} (C: {b4['condition_c_score']:.0f}/3, A: {b4['condition_a_score']:.0f}/3)")
     summary_lines.append(f"  Overall: {criteria['overall']}")
     summary_lines.append("")
 
+    summary_lines.append("K RETRIEVAL (Condition C):")
+    summary_lines.append(f"  Turns with K > 0: {120 - kact['k_zero_turns']}/120")
+    summary_lines.append(f"  Total K events: {kact['k_events_total']}")
+    summary_lines.append(f"  K-only episodes: {kact['k_only_episodes_total']}")
+    summary_lines.append(f"  First K fire: Turn {kact['first_k_fire_turn']}")
+    summary_lines.append("")
+
+    summary_lines.append("TOPIC CONSOLIDATION (Condition C):")
+    summary_lines.append(f"  Consolidation passes: {cons['consolidation_passes']}")
+    summary_lines.append(f"  Pairs merged: {cons['total_pairs_merged']}")
+    summary_lines.append(f"  Topics at turn 10: {cons['topics_at_turn_10']}")
+    summary_lines.append(f"  Topics at turn 60: {cons['topics_at_turn_60']}")
+    summary_lines.append(f"  Topics at turn 120: {cons['topics_at_turn_120']}")
+    summary_lines.append(f"  Final topic count: {cons['final_topic_count']}")
+    summary_lines.append("")
+
+    summary_lines.append("RULE DETECTION:")
+    for cond_key, cond_label in CONDITIONS.items():
+        rd = read_rule_detection(os.path.join(RUN_DIR, cond_key))
+        summary_lines.append(f"  {cond_label}: detections={rd['total_detections']}, recall={rd['recall']:.2f}, FP={rd['estimated_false_positives']}")
+    summary_lines.append("")
+
+    summary_lines.append("TOKEN GROWTH:")
     for cond_key, cond_label in CONDITIONS.items():
         mp = read_model_performance(os.path.join(RUN_DIR, cond_key))
-        summary_lines.append(f"{cond_label} peak tokens: ~{mp['peak_estimated_tokens']:,} (turn {mp['peak_turn']})")
-
-    summary_lines.append("")
-    summary_lines.append(f"Condition C avg K: {kvals['avg_k_per_turn']}")
-    summary_lines.append(f"Condition C topics: {memstore['final_topic_count']}")
-    summary_lines.append(f"Condition C episodes: {memstore['final_episode_count']}")
+        summary_lines.append(f"  {cond_label} peak: ~{mp['peak_estimated_tokens']:,} tokens (turn {mp['peak_turn']})")
 
     summary_path = os.path.join(STUDY_DIR, "analysis_summary.txt")
     with open(summary_path, "w", encoding="utf-8") as f:
         f.write("\n".join(summary_lines))
 
     print_section("PROTOCOL NOTES")
-    print("[See experiments/study_001/README.md for full protocol notes]")
+    print("[See experiments/study_002/README.md for full protocol notes]")
     print("=" * WIDTH)
     print(f"\nSummary written to: {summary_path}")
 

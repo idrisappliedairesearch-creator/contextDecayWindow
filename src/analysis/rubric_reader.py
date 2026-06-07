@@ -1,17 +1,28 @@
 import re
 
 
+CATEGORY_MAP = {
+    "cat_1": ["Q1", "Q2", "Q3"],
+    "cat_2": ["Q4", "Q5", "Q6"],
+    "cat_3": ["Q7", "Q8"],
+    "cat_4": ["Q9", "Q10", "Q11"],
+    "cat_5": ["Q12", "Q13"],
+}
+
+
 def read_scores(scores_path: str) -> dict:
     """
     Parses scores.md and returns structured scores:
     {
         "condition": str,
-        "scores": {"Q1": float, ..., "Q10": float},
-        "category_1_2_total": float,
-        "category_3_total": float,
-        "category_4_total": float,
-        "overall": float,
-        "notes": {"Q1": str, ..., "Q10": str},
+        "scores": {"Q1": float, ..., "Q13": float},
+        "cat_1": float,  -- out of 3.0
+        "cat_2": float,  -- out of 3.0
+        "cat_3": float,  -- out of 2.0
+        "cat_4": int,    -- out of 3
+        "cat_5": int,    -- out of 2
+        "overall": float, -- out of 13.0
+        "notes": {"Q1": str, ..., "Q13": str},
     }
     """
     with open(scores_path, encoding="utf-8") as f:
@@ -26,18 +37,7 @@ def read_scores(scores_path: str) -> dict:
 
     table_lines = table_match.group(1).strip().split("\n")
 
-    question_map = {
-        "Q1": "Q1",
-        "Q2": "Q2",
-        "Q3": "Q3",
-        "Q4": "Q4",
-        "Q5": "Q5",
-        "Q6": "Q6",
-        "Q7": "Q7",
-        "Q8": "Q8",
-        "Q9": "Q9",
-        "Q10": "Q10",
-    }
+    all_questions = [f"Q{i}" for i in range(1, 14)]
 
     scores = {}
     notes = {}
@@ -50,7 +50,7 @@ def read_scores(scores_path: str) -> dict:
         score_str = parts[2]
         note = parts[3] if len(parts) > 3 else ""
 
-        for qkey in question_map:
+        for qkey in all_questions:
             if qkey in question:
                 try:
                     scores[qkey] = float(score_str)
@@ -59,22 +59,35 @@ def read_scores(scores_path: str) -> dict:
                 notes[qkey] = note.strip()
                 break
 
-    cat1_2_match = re.search(r"\*\*Category 1\+2 Total:\*\*\s*([\d.]+)\s*/\s*5\.0", content)
-    cat3_match = re.search(r"\*\*Category 3 Total:\*\*\s*([\d.]+)\s*/\s*3", content)
-    cat4_match = re.search(r"\*\*Category 4 Total:\*\*\s*([\d.]+)\s*/\s*2", content)
-    overall_match = re.search(r"\*\*Overall:\*\*\s*([\d.]+)\s*/\s*10\.0", content)
+    cat_matches = {}
+    for cat_label, pattern in [
+        ("cat_1", r"\*\*Category 1 Total.*?\*\*\s*([\d.]+)\s*/\s*3\.0"),
+        ("cat_2", r"\*\*Category 2 Total.*?\*\*\s*([\d.]+)\s*/\s*3\.0"),
+        ("cat_3", r"\*\*Category 3 Total.*?\*\*\s*([\d.]+)\s*/\s*2\.0"),
+        ("cat_4", r"\*\*Category 4 Total.*?\*\*\s*([\d])\s*/\s*3"),
+        ("cat_5", r"\*\*Category 5 Total.*?\*\*\s*([\d])\s*/\s*2"),
+        ("overall", r"\*\*Overall:\*\*\s*([\d.]+)\s*/\s*13\.0"),
+    ]:
+        m = re.search(pattern, content)
+        if m:
+            val = m.group(1)
+            cat_matches[cat_label] = int(val) if cat_label in ("cat_4", "cat_5") else float(val)
 
-    cat1_2 = float(cat1_2_match.group(1)) if cat1_2_match else sum(scores.get(f"Q{i}", 0) for i in range(1, 6))
-    cat3 = float(cat3_match.group(1)) if cat3_match else sum(scores.get(f"Q{i}", 0) for i in range(6, 9))
-    cat4 = float(cat4_match.group(1)) if cat4_match else sum(scores.get(f"Q{i}", 0) for i in range(9, 11))
-    overall = float(overall_match.group(1)) if overall_match else cat1_2 + cat3 + cat4
+    cat1 = cat_matches.get("cat_1", sum(scores.get(q, 0) for q in CATEGORY_MAP["cat_1"]))
+    cat2 = cat_matches.get("cat_2", sum(scores.get(q, 0) for q in CATEGORY_MAP["cat_2"]))
+    cat3 = cat_matches.get("cat_3", sum(scores.get(q, 0) for q in CATEGORY_MAP["cat_3"]))
+    cat4 = cat_matches.get("cat_4", sum(scores.get(q, 0) for q in CATEGORY_MAP["cat_4"]))
+    cat5 = cat_matches.get("cat_5", sum(scores.get(q, 0) for q in CATEGORY_MAP["cat_5"]))
+    overall = cat_matches.get("overall", cat1 + cat2 + cat3 + cat4 + cat5)
 
     return {
         "condition": condition,
         "scores": scores,
         "notes": notes,
-        "category_1_2_total": cat1_2,
-        "category_3_total": cat3,
-        "category_4_total": cat4,
+        "cat_1": cat1,
+        "cat_2": cat2,
+        "cat_3": cat3,
+        "cat_4": cat4,
+        "cat_5": cat5,
         "overall": overall,
     }
