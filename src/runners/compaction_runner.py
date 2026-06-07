@@ -114,5 +114,5 @@ class CompactionRunner(BaseRunner):
     def _run_compaction(self, history_text: str) -> str:
         """Real model call — replaces Sprint 006 placeholder."""
         prompt = COMPACTION_PROMPT_TEMPLATE.format(full_history_text=history_text)
-        result = self._inference_provider.complete(prompt)
+        result = self._inference_provider.complete(prompt, suppress_rule_detection=True)
         return result.assistant_message

@@ -25,7 +25,32 @@ class MockInferenceResult:
 
 
 class MockInferenceProvider:
-    def complete(self, prompt: str) -> MockInferenceResult:
+    def __init__(self):
+        self._call_count = 0
+
+    def complete(self, prompt: str, suppress_rule_detection: bool = False) -> MockInferenceResult:
+        self._call_count += 1
+
+        if suppress_rule_detection:
+            return MockInferenceResult(
+                assistant_message="Mock assistant response.",
+                tokens_per_second=50.0,
+                time_to_first_token=0.02,
+                output_tokens=4,
+                contains_rule=False,
+                rule_summary=None,
+            )
+
+        if self._call_count == 1:
+            return MockInferenceResult(
+                assistant_message="Mock assistant response.",
+                tokens_per_second=50.0,
+                time_to_first_token=0.02,
+                output_tokens=4,
+                contains_rule=True,
+                rule_summary="Always respond in bullet points.",
+            )
+
         return MockInferenceResult(
             assistant_message="Mock assistant response.",
             tokens_per_second=50.0,

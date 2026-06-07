@@ -18,9 +18,10 @@ class TerminalPrinter:
         topics = record.topic_count
         store = record.n_total_in_store
         tokens = f"{record.estimated_tokens:,}"
+        total = record.total_turns
 
         print(f"{sep_eq}")
-        print(f"TURN {turn_num} | Condition: {condition} | Topics: {topics} | Store: {store} | Tokens: ~{tokens}")
+        print(f"TURN {turn_num} / {total} | Condition: {condition} | Topics: {topics} | Store: {store} | Tokens: ~{tokens}")
         print(f"{sep_eq}")
 
         user_truncated = self._truncate(record.user_message, 120)
