@@ -28,6 +28,7 @@ class TurnRecord:
 
     # User input
     user_message: str
+    total_turns: int = 0
 
     # Retrieval (populated by RetrievalEngine)
     k_count: int = 0

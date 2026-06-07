@@ -67,7 +67,7 @@ class InferenceProvider:
         )
         self._initialized = True
 
-    def complete(self, prompt: str) -> InferenceResult:
+    def complete(self, prompt: str, suppress_rule_detection: bool = False) -> InferenceResult:
         augmented_prompt = self._inject_rule_detection(prompt)
 
         start = time.perf_counter()
@@ -84,7 +84,12 @@ class InferenceProvider:
         tokens_per_second = output_tokens / elapsed if elapsed > 0 else 0.0
         time_to_first_token = elapsed / output_tokens if output_tokens > 0 else elapsed
 
-        assistant_message, contains_rule, rule_summary = self._parse_rule_detection(raw_message)
+        if suppress_rule_detection:
+            assistant_message = raw_message.strip()
+            contains_rule = False
+            rule_summary = None
+        else:
+            assistant_message, contains_rule, rule_summary = self._parse_rule_detection(raw_message)
 
         return InferenceResult(
             assistant_message=assistant_message,

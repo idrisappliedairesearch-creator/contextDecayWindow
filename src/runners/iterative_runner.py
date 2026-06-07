@@ -2,9 +2,11 @@ import sqlite3
 import numpy as np
 
 from src.db.episode import store_episode
+from src.db.rule_store import store_rule
 from src.memory.retrieval_engine import RetrievalEngine
 from src.memory.topic_manager import TopicManager
 from src.memory.context_builder import build_prompt, estimate_tokens
+from src.inference.provider import InferenceResult
 from src.observability.turn_record import TurnRecord, AssignmentResult
 from src.runners.base_runner import BaseRunner
 
@@ -101,6 +103,7 @@ class IterativeRunner(BaseRunner):
         assistant_message: str,
         turn_number: int,
         embedding: np.ndarray = None,
+        inference_result: InferenceResult = None,
     ) -> AssignmentResult:
         if embedding is None:
             pair_text = f"User: {user_message}\nAssistant: {assistant_message}"
@@ -113,6 +116,14 @@ class IterativeRunner(BaseRunner):
             embedding,
             turn_number,
         )
+
+        if inference_result and inference_result.contains_rule and inference_result.rule_summary:
+            store_rule(
+                self._conn,
+                episode_id,
+                inference_result.rule_summary,
+                turn_number,
+            )
 
         assignment = self._topic_manager.assign(episode_id, embedding)
 
