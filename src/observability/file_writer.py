@@ -43,10 +43,12 @@ class FileWriter:
         csv_files = {
             "model_performance.csv": ["turn", "tokens_per_second", "time_to_first_token", "output_tokens", "estimated_tokens"],
             "memory_store.csv": ["turn", "topic_count", "episode_count", "new_topic_created", "new_topic_label", "compaction_occurred", "compaction_turn"],
-            "K_values.csv": ["turn", "k_count", "episode_id", "similarity_score", "topic_label"],
-            "N_values.csv": ["turn", "n_count", "episode_id", "decay_score", "topic_label"],
+            "K_values.csv": ["turn", "k_count", "episode_id", "similarity_score", "topic_label", "k_only"],
+            "N_values.csv": ["turn", "n_count", "episode_id", "decay_score", "topic_label", "n_total_in_store"],
             "topic_events.csv": ["turn", "event_type", "topic_label", "centroid_drift"],
             "retrieval_events.csv": ["turn", "episode_id", "similarity_score", "decay_score", "retrieval_type"],
+            "rule_detection.csv": ["turn_number", "contains_rule_detected", "rule_summary", "parse_error", "ground_truth", "true_positive", "false_positive"],
+            "consolidation_events.csv": ["episode_count_at_trigger", "turn_number", "topics_before", "topics_after", "pairs_merged", "surviving_labels", "merged_labels", "similarities", "episodes_reassigned"],
         }
 
         for fname, headers in csv_files.items():
@@ -66,6 +68,8 @@ class FileWriter:
         self._write_n_values_csv(record)
         self._write_topic_events_csv(record)
         self._write_retrieval_events_csv(record)
+        self._write_rule_detection_csv(record)
+        self._write_consolidation_events_csv(record)
         self._write_snapshot(record)
         self._write_constructed_prompt(record)
 
@@ -77,6 +81,8 @@ class FileWriter:
             "user_message": record.user_message,
             "k_count": record.k_count,
             "n_count": record.n_count,
+            "n_total_in_store": record.n_total_in_store,
+            "k_only_count": record.k_only_count,
             "total_in_context": record.total_in_context,
             "k_episodes": record.k_episodes,
             "n_episodes": record.n_episodes,
@@ -88,6 +94,7 @@ class FileWriter:
             "new_topic_created": record.new_topic_created,
             "new_topic_label": record.new_topic_label,
             "centroid_drift": record.centroid_drift,
+            "consolidation_occurred": record.consolidation_occurred,
             "compaction_occurred": record.compaction_occurred,
             "compaction_turn": record.compaction_turn,
             "history_tokens_before_compaction": record.history_tokens_before_compaction,
@@ -97,8 +104,21 @@ class FileWriter:
             "assistant_message": record.assistant_message,
             "stored_episode_id": record.stored_episode_id,
             "stored_topic_label": record.stored_topic_label,
+            "contains_rule": record.contains_rule,
+            "rule_summary": record.rule_summary,
+            "rule_store_count": record.rule_store_count,
+            "rule_token_estimate": record.rule_token_estimate,
             "constructed_prompt_path": f"constructed_prompts/turn_{record.turn_number:03d}.txt",
         }
+        if record.consolidation_result is not None:
+            res = record.consolidation_result
+            data["consolidation_result"] = {
+                "triggered_at_episode": res.triggered_at_episode,
+                "topics_before": res.topics_before,
+                "topics_after": res.topics_after,
+                "pairs_merged": res.pairs_merged,
+                "merge_log": res.merge_log,
+            }
         with open(fpath, "a", encoding="utf-8") as f:
             f.write(json.dumps(data) + "\n")
 
@@ -185,6 +205,7 @@ class FileWriter:
                     ep.get("id", ""),
                     ep.get("sim_score", 0.0),
                     ep.get("topic_label", ""),
+                    ep.get("retrieval_type") == "K",
                 ])
 
     def _write_n_values_csv(self, record: TurnRecord) -> None:
@@ -198,6 +219,7 @@ class FileWriter:
                     ep.get("id", ""),
                     ep.get("decay_score", 0.0),
                     ep.get("topic_label", ""),
+                    record.n_total_in_store,
                 ])
 
     def _write_topic_events_csv(self, record: TurnRecord) -> None:
@@ -220,6 +242,45 @@ class FileWriter:
                         drift,
                     ])
 
+    def _write_rule_detection_csv(self, record: TurnRecord) -> None:
+        fpath = os.path.join(self.config.output_dir, "metrics", "rule_detection.csv")
+        with open(fpath, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                record.turn_number,
+                record.contains_rule,
+                record.rule_summary or "",
+                "",
+                "",
+                "",
+                "",
+            ])
+
+    def _write_consolidation_events_csv(self, record: TurnRecord) -> None:
+        if not record.consolidation_occurred or record.consolidation_result is None:
+            return
+
+        result = record.consolidation_result
+        fpath = os.path.join(self.config.output_dir, "metrics", "consolidation_events.csv")
+        surviving_labels = ";".join(entry["surviving_label"] for entry in result.merge_log)
+        merged_labels = ";".join(entry["merged_label"] for entry in result.merge_log)
+        similarities = ";".join(f"{entry['similarity']:.2f}" for entry in result.merge_log)
+        episodes_reassigned = ";".join(str(entry["episodes_reassigned"]) for entry in result.merge_log)
+
+        with open(fpath, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                result.triggered_at_episode,
+                record.turn_number,
+                result.topics_before,
+                result.topics_after,
+                result.pairs_merged,
+                surviving_labels,
+                merged_labels,
+                similarities,
+                episodes_reassigned,
+            ])
+
     def _write_retrieval_events_csv(self, record: TurnRecord) -> None:
         fpath = os.path.join(self.config.output_dir, "metrics", "retrieval_events.csv")
         with open(fpath, "a", newline="", encoding="utf-8") as f:
@@ -241,6 +302,8 @@ class FileWriter:
             "topic_count": record.topic_count,
             "episode_count": record.episode_count,
             "estimated_tokens": record.estimated_tokens,
+            "rule_store_count": record.rule_store_count,
+            "topic_consolidation_count": 1 if record.consolidation_occurred else 0,
             "topics": [
                 {
                     "label": label,

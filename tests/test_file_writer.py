@@ -132,7 +132,7 @@ class TestFileWriterInitRun:
             with open(fpath) as f:
                 reader = csv.reader(f)
                 headers = next(reader)
-                assert headers == ["turn", "k_count", "episode_id", "similarity_score", "topic_label"]
+                assert headers == ["turn", "k_count", "episode_id", "similarity_score", "topic_label", "k_only"]
         finally:
             self._teardown()
 
@@ -144,7 +144,7 @@ class TestFileWriterInitRun:
             with open(fpath) as f:
                 reader = csv.reader(f)
                 headers = next(reader)
-                assert headers == ["turn", "n_count", "episode_id", "decay_score", "topic_label"]
+                assert headers == ["turn", "n_count", "episode_id", "decay_score", "topic_label", "n_total_in_store"]
         finally:
             self._teardown()
 

@@ -1,4 +1,5 @@
 import os
+import time
 
 import numpy as np
 
@@ -21,6 +22,7 @@ class StudyRunner:
     CONDITION_ORDER = ["full_context", "compaction", "iterative"]
     RUBRIC_TURN_START = 25
     RUBRIC_TURN_END = 32
+    RUBRIC_TURNS = list(range(112, 121))
 
     def __init__(self, script_path: str, study_dir: str, run_id: str = "run_001"):
         self._check_env_vars()
@@ -63,6 +65,11 @@ class StudyRunner:
         runner = self._create_runner(condition, run_config, observer)
         previous_prompt = None
         rubric_responses = []
+        condition_start = time.perf_counter()
+        peak_tokens = 0
+        turn_count = 0
+
+        self._print_condition_start_banner(condition)
 
         for turn_data in self.turns:
             turn_number = turn_data["turn"]
@@ -77,6 +84,7 @@ class StudyRunner:
 
             record.constructed_prompt = full_prompt
             record.previous_context_window = previous_prompt
+            record.total_turns = len(self.turns)
 
             result = self._inference_provider.complete(full_prompt)
             assistant_message = result.assistant_message
@@ -85,8 +93,14 @@ class StudyRunner:
             record.time_to_first_token = result.time_to_first_token
             record.output_tokens = result.output_tokens
             record.assistant_message = assistant_message
+            record.contains_rule = result.contains_rule
+            record.rule_summary = result.rule_summary
 
-            if self.RUBRIC_TURN_START <= turn_number <= self.RUBRIC_TURN_END:
+            if record.estimated_tokens > peak_tokens:
+                peak_tokens = record.estimated_tokens
+            turn_count += 1
+
+            if turn_number in self.RUBRIC_TURNS:
                 rubric_responses.append({
                     "turn_number": turn_number,
                     "user_message": user_message,
@@ -96,7 +110,13 @@ class StudyRunner:
             if condition == "iterative":
                 pair_text = f"User: {user_message}\nAssistant: {assistant_message}"
                 embedding = embed(pair_text)
-                assignment = runner.on_turn_complete(user_message, assistant_message, turn_number, embedding)
+                assignment = runner.on_turn_complete(
+                    user_message=user_message,
+                    assistant_message=assistant_message,
+                    turn_number=turn_number,
+                    embedding=embedding,
+                    inference_result=result,
+                )
                 record.stored_episode_id = assignment.topic_id
                 record.stored_topic_label = assignment.topic_label
                 record.new_topic_created = assignment.is_new_topic
@@ -109,6 +129,10 @@ class StudyRunner:
 
             observer.flush_turn(record)
             previous_prompt = full_prompt
+
+        condition_duration = time.perf_counter() - condition_start
+
+        self._print_condition_complete_banner(condition, turn_count, peak_tokens, condition_duration)
 
         if rubric_responses:
             self._write_rubric_responses(condition, rubric_responses)
@@ -127,6 +151,29 @@ class StudyRunner:
         else:
             raise ValueError(f"Unknown condition: {condition}")
 
+    def _print_condition_start_banner(self, condition: str) -> None:
+        bar_w = 50
+        cond_padded = f"  STARTING CONDITION: {condition}".ljust(bar_w)
+        run_info = f"  Run: {self.run_id} | Script: {len(self.turns)} turns | Study: 002".ljust(bar_w)
+        print()
+        print("\u2554" + "\u2550" * (bar_w - 2) + "\u2557")
+        print("\u2551" + cond_padded + "\u2551")
+        print("\u2551" + run_info + "\u2551")
+        print("\u255a" + "\u2550" * (bar_w - 2) + "\u255d")
+        print()
+
+    def _print_condition_complete_banner(self, condition: str, turn_count: int, peak_tokens: int, duration: float) -> None:
+        bar_w = 50
+        mins, secs = divmod(duration, 60)
+        duration_str = f"{int(mins)}m {int(secs)}s"
+        cond_padded = f"  CONDITION COMPLETE: {condition}".ljust(bar_w)
+        stats = f"  {turn_count} turns | Peak tokens: ~{peak_tokens:,} | Duration: {duration_str}".ljust(bar_w)
+        print("\u2554" + "\u2550" * (bar_w - 2) + "\u2557")
+        print("\u2551" + cond_padded + "\u2551")
+        print("\u2551" + stats + "\u2551")
+        print("\u255a" + "\u2550" * (bar_w - 2) + "\u255d")
+        print()
+
     def _write_rubric_responses(self, condition: str, rubric_responses: list) -> None:
         rubric_dir = os.path.join(self.study_dir, self.run_id, condition, "rubric")
         os.makedirs(rubric_dir, exist_ok=True)
@@ -140,14 +187,15 @@ class StudyRunner:
             f.write(f"\n---\n")
 
             question_labels = {
-                25: "Q1: Budget Cap",
-                26: "Q4: Lead Engineer + Deadline",
-                27: "Q7: Formatting Rules",
-                28: "Q10: CRISPR Cell Line + Expression Rate",
-                29: "Q13: CRISPR Dosage",
-                30: "Q16: Performance Target",
-                31: "Q19: Researcher Identity",
-                32: "Q22: All Numerical Values",
+                112: "Q1: Budget Cap",
+                113: "Q4: Lead Engineer + Deadline",
+                114: "Q7: Formatting Rules",
+                115: "Q10: CRISPR Cell Line + Expression Rate",
+                116: "Q13: CRISPR Dosage",
+                117: "Q16: Performance Target",
+                118: "Q19: Researcher Identity",
+                119: "Q22: All Numerical Values",
+                120: "Q25: Final Comprehensive Check",
             }
 
             for resp in rubric_responses:

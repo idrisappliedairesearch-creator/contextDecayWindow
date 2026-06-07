@@ -21,7 +21,7 @@ class TestInitDb:
         finally:
             os.unlink(db_path)
 
-    def test_creates_all_three_tables(self):
+    def test_creates_all_tables(self):
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             db_path = f.name
         try:
@@ -33,6 +33,7 @@ class TestInitDb:
             assert "episodes" in tables
             assert "topics" in tables
             assert "retrieval_events" in tables
+            assert "rule_store" in tables
             conn.close()
         finally:
             os.unlink(db_path)
@@ -48,7 +49,7 @@ class TestInitDb:
                 "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
             )
             tables = [row[0] for row in cursor.fetchall()]
-            assert len(tables) == 3
+            assert len(tables) == 4
             conn2.close()
         finally:
             os.unlink(db_path)

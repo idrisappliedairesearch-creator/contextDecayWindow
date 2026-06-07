@@ -10,11 +10,23 @@ from src.db.retrieval import (
     update_retrieval_metadata,
     log_retrieval_events_batch,
 )
-from src.memory.context_builder import build_prompt, estimate_tokens
+from src.db.rule_store import get_all_rules
+from src.db.episode import get_episode_by_id
+from src.memory.context_builder import build_prompt, estimate_tokens, _build_rule_block_text
 
 
 DECAY_RATE = 0.1
-K_SIMILARITY_THRESHOLD = 0.70
+
+# Study 001: K_SIMILARITY_THRESHOLD = 0.70
+K_SIMILARITY_THRESHOLD = 0.50
+# Reduced from 0.70. Study 001: K fired once in 32 turns.
+# 0.70 was too strict for Qwen3-Embedding-0.6B's embedding space.
+
+N_RETRIEVAL_CAP = 10
+# Hard floor of the soft cap. Top 10 decay-sorted episodes always included.
+# Additional episodes included if they score above K_SIMILARITY_THRESHOLD
+# regardless of whether they appear in the top-10 N set.
+# Rule episodes are unconditional and do not count against this cap.
 
 
 @dataclass
@@ -28,7 +40,10 @@ class RetrievalResult:
     estimated_tokens: int = 0
     k_count: int = 0
     n_count: int = 0
+    n_total_in_store: int = 0
     total_episodes_in_context: int = 0
+    rule_episodes: list = field(default_factory=list)
+    rule_token_estimate: int = 0
 
 
 class RetrievalEngine:
@@ -37,6 +52,9 @@ class RetrievalEngine:
         self.conn = conn
 
     def retrieve(self, user_message: str, turn_number: int) -> RetrievalResult:
+        rule_rows = get_all_rules(self.conn)
+        rule_episodes = self._fetch_rule_episodes(rule_rows)
+
         query_embedding = embed(user_message)
         all_episodes = get_all_episodes_with_embeddings(self.conn)
 
@@ -96,7 +114,9 @@ class RetrievalEngine:
             clean_episodes.append(ep_clean)
 
         system_prompt = "You are a helpful assistant."
-        constructed_prompt = build_prompt(clean_episodes, system_prompt)
+        rule_block_text = _build_rule_block_text(rule_episodes)
+        rule_token_estimate = estimate_tokens(rule_block_text) if rule_block_text else 0
+        constructed_prompt = build_prompt(clean_episodes, system_prompt, rule_episodes if rule_episodes else None)
         estimated_tokens = estimate_tokens(constructed_prompt)
 
         return RetrievalResult(
@@ -109,7 +129,10 @@ class RetrievalEngine:
             estimated_tokens=estimated_tokens,
             k_count=len(k_episode_ids),
             n_count=len(n_episode_ids),
+            n_total_in_store=len(deserialized_episodes),
             total_episodes_in_context=len(clean_episodes),
+            rule_episodes=rule_episodes,
+            rule_token_estimate=rule_token_estimate,
         )
 
     def _k_retrieve(
@@ -133,7 +156,8 @@ class RetrievalEngine:
             decay = self._compute_decay(ep.get("last_retrieved_at"))
             n_scores[ep["id"]] = decay
         n_episode_ids = sorted(n_scores.keys(), key=lambda eid: n_scores[eid], reverse=True)
-        return n_episode_ids, n_scores
+        capped_ids = n_episode_ids[:N_RETRIEVAL_CAP]
+        return capped_ids, n_scores
 
     def _compute_decay(self, last_retrieved_at):
         if last_retrieved_at is None:
@@ -149,3 +173,16 @@ class RetrievalEngine:
         filtered = [ep for ep in all_episodes if ep["id"] in included_ids]
         filtered.sort(key=lambda ep: ep["turn_number"])
         return filtered
+
+    def _fetch_rule_episodes(self, rule_rows: list) -> list:
+        rule_episodes = []
+        for rule_row in rule_rows:
+            ep = get_episode_by_id(self.conn, rule_row["episode_id"])
+            if ep is not None:
+                rule_episodes.append({
+                    "id": ep["id"],
+                    "turn_number": ep["turn_number"],
+                    "user_message": ep["user_message"],
+                    "assistant_message": ep["assistant_message"],
+                })
+        return rule_episodes

@@ -39,6 +39,14 @@ def init_db(db_path: str) -> sqlite3.Connection:
             retrieval_type    TEXT NOT NULL,
             retrieved_at      TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS rule_store (
+            id              TEXT PRIMARY KEY,
+            episode_id      TEXT NOT NULL,
+            rule_summary    TEXT NOT NULL,
+            turn_number     INTEGER NOT NULL,
+            created_at      TEXT NOT NULL
+        );
     """)
 
     conn.commit()

@@ -1,0 +1,57 @@
+STUDY 002 ANALYSIS SUMMARY
+=======================================================
+
+Full Context:
+  Cat 1 (early plant):  2.5/3.0
+  Cat 2 (middle plant): 1.0/3.0
+  Cat 3 (late plant):   1.0/2.0
+  Cat 4 (bleed):        2/3
+  Cat 5 (rules):        2/2
+  Overall:              8.5/13.0
+
+Compaction:
+  Cat 1 (early plant):  1.0/3.0
+  Cat 2 (middle plant): 0.0/3.0
+  Cat 3 (late plant):   0.0/2.0
+  Cat 4 (bleed):        0/3
+  Cat 5 (rules):        1/2
+  Overall:              2.0/13.0
+
+Iterative:
+  Cat 1 (early plant):  3.0/3.0
+  Cat 2 (middle plant): 3.0/3.0
+  Cat 3 (late plant):   2.0/2.0
+  Cat 4 (bleed):        3/3
+  Cat 5 (rules):        2/2
+  Overall:              13.0/13.0
+
+SUCCESS CRITERIA:
+  Bar 1 (Middle Plant):     PASS (C: 3.0, A: 1.0)
+  Bar 2 (Token Efficiency): FAIL (violations: 2)
+  Bar 3 (Rule Pinning):     PASS (C: 2/2, baseline: 1/2)
+  Bar 4 (Topic Bleed):      PASS (C: 3/3, A: 2/3)
+  Overall: PARTIAL
+
+K RETRIEVAL (Condition C):
+  Turns with K > 0: 55/120
+  Total K events: 100
+  K-only episodes: 57
+  First K fire: Turn 2
+
+TOPIC CONSOLIDATION (Condition C):
+  Consolidation passes: 0
+  Pairs merged: 0
+  Topics at turn 10: 7
+  Topics at turn 60: 25
+  Topics at turn 120: 52
+  Final topic count: 52
+
+RULE DETECTION:
+  Full Context: detections=0, recall=0.00, FP=0
+  Compaction: detections=1, recall=0.00, FP=1
+  Iterative: detections=1, recall=0.50, FP=0
+
+TOKEN GROWTH:
+  Full Context peak: ~132,727 tokens (turn 120)
+  Compaction peak: ~3,197 tokens (turn 35)
+  Iterative peak: ~13,143 tokens (turn 117)

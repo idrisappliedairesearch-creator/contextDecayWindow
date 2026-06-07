@@ -134,7 +134,7 @@ class TestObserverFlushTurn:
             record = self._make_record()
             self.observer.flush_turn(record)
             out = capsys.readouterr().out
-            assert "TURN 01" in out
+            assert "TURN 001" in out
             assert "[USER]" in out
             assert "[RETRIEVAL]" in out
             assert "[TOPIC LAYER]" in out
@@ -165,7 +165,7 @@ class TestObserverFlushTurn:
             out = capsys.readouterr().out
 
             assert "50.0 tok/s" in out
-            assert "TTFT: 0.25s" in out
+            assert "~TTFT: 0.25s" in out
             assert "Output: 150 tokens" in out
             assert "[ASSISTANT] The budget cap is $47,500." in out
         finally:
@@ -198,7 +198,7 @@ class TestObserverFlushTurn:
             )
             self.observer.flush_turn(record)
             out = capsys.readouterr().out
-            assert "New topic: topic_3 created" in out
+            assert "New node: Yes" in out
         finally:
             self._teardown()
 

@@ -52,9 +52,9 @@ class TestTerminalPrinterFormat:
         record = self._make_record()
         printer.print_turn(record)
         out = capsys.readouterr().out
-        assert "TURN 04" in out
+        assert "TURN 004" in out
+        assert "Condition: iterative" in out
         assert "Topics: 3" in out
-        assert "Episodes: 7" in out
         assert "~4,832" in out
 
     def test_prints_user_message(self, capsys):
@@ -69,8 +69,9 @@ class TestTerminalPrinterFormat:
         record = self._make_record()
         printer.print_turn(record)
         out = capsys.readouterr().out
-        assert "[RETRIEVAL] K=3 above 0.70" in out
-        assert "N=7 total episodes" in out
+        assert "[RETRIEVAL] K=3 above 0.50" in out
+        assert "N=7" in out
+        assert "K-only" in out
 
     def test_prints_episode_details(self, capsys):
         printer = TerminalPrinter()
@@ -87,7 +88,7 @@ class TestTerminalPrinterFormat:
         record = self._make_record(new_topic_created=False, centroid_drift={"topic_1": 0.023})
         printer.print_turn(record)
         out = capsys.readouterr().out
-        assert "No new nodes" in out
+        assert "New node: No" in out
         assert "Centroid drift: topic_1=0.023" in out
 
     def test_prints_topic_layer_new_topic(self, capsys):
@@ -95,7 +96,7 @@ class TestTerminalPrinterFormat:
         record = self._make_record(new_topic_created=True, new_topic_label="topic_4", centroid_drift={})
         printer.print_turn(record)
         out = capsys.readouterr().out
-        assert "New topic: topic_4 created" in out
+        assert "New node: Yes" in out
 
     def test_prints_context_built(self, capsys):
         printer = TerminalPrinter()
@@ -112,7 +113,7 @@ class TestTerminalPrinterFormat:
         printer.print_turn(record)
         out = capsys.readouterr().out
         assert "47.2 tok/s" in out
-        assert "TTFT: 0.31s" in out
+        assert "~TTFT: 0.31s" in out
         assert "Output: 312 tokens" in out
 
     def test_generation_none_renders_dashes(self, capsys):
@@ -242,7 +243,7 @@ class TestTerminalCentroidDrift:
         printer.print_turn(record)
         out = capsys.readouterr().out
         assert "Centroid drift:" not in out
-        assert "No new nodes" in out
+        assert "New node: No" in out
 
     def test_only_nonzero_drift_shown(self, capsys):
         printer = TerminalPrinter()
